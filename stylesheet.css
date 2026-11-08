@@ -1,0 +1,182 @@
+/* Sigfrido D. Ciletti – site styles */
+
+:root {
+	--bg: #eceff5;
+	--ink: #1d2230;
+	--muted: #5c6373;
+	--faint: #8a909d;
+	--rule: #d3d8e2;
+	--link: #2a3f8f;
+	--link-line: #aab5dc;
+	--select: #d3dbf2;
+	color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #121722;
+		--ink: #e3e5ea;
+		--muted: #9aa0ad;
+		--faint: #6c7282;
+		--rule: #2c3039;
+		--link: #a6b6f2;
+		--link-line: #4a5683;
+		--select: #2d3550;
+		color-scheme: dark;
+	}
+}
+
+* { box-sizing: border-box; }
+
+body {
+	margin: 0;
+	background: var(--bg);
+	color: var(--ink);
+	font-family: "STIX Two Text", "Iowan Old Style", Palatino, Georgia, serif;
+	font-size: 1.15rem;
+	line-height: 1.7;
+	font-variant-numeric: oldstyle-nums;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+::selection { background: var(--select); }
+
+/* Layout */
+
+.page {
+	max-width: 36rem;
+	margin: 0 auto;
+	padding: 4rem 1.5rem 3rem;
+}
+.wide .page { max-width: 56rem; }
+
+/* Homepage sits in the middle of the screen */
+.home .page {
+	min-height: 100vh;
+	min-height: 100svh;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
+
+/* Links */
+
+a {
+	color: var(--link);
+	text-decoration: underline;
+	text-decoration-color: var(--link-line);
+	text-decoration-thickness: 1px;
+	text-underline-offset: 0.2em;
+	transition: text-decoration-color 0.15s, color 0.15s;
+}
+a:hover { text-decoration-color: currentColor; }
+a:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; border-radius: 2px; }
+
+/* Small-caps links: homepage menu, back link, download link */
+nav a, .back, .actions a {
+	color: var(--ink);
+	text-decoration: none;
+	font-variant-caps: all-small-caps;
+	letter-spacing: 0.08em;
+	font-size: 1.1rem;
+}
+nav a:hover, .back:hover, .actions a:hover { color: var(--link); }
+.back { color: var(--muted); }
+
+/* Headings */
+
+h1 {
+	font-weight: 400;
+	line-height: 1.1;
+	letter-spacing: -0.01em;
+	margin: 0;
+	text-wrap: balance;
+}
+
+header { text-align: center; }
+
+/* The short blue line under each page's heading */
+.role::after,
+header.sub h1::after {
+	content: "";
+	display: block;
+	width: 2.5rem;
+	height: 2px;
+	margin: 1.5rem auto 0;
+	background: var(--link);
+	opacity: 0.75;
+}
+
+/* Homepage header */
+header.top { margin-bottom: 3.5rem; }
+header.top h1 { font-size: clamp(2.3rem, 7.5vw, 3.2rem); }
+.role { font-style: italic; color: var(--muted); margin: 0.6rem 0 0; }
+nav {
+	display: flex;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: 0.25rem 2rem;
+	margin-top: 1.5rem;
+}
+
+/* Subpage header */
+.back { display: inline-block; margin-bottom: 2rem; }
+header.sub { margin-bottom: 2.5rem; }
+header.sub h1 { font-size: clamp(1.9rem, 6vw, 2.4rem); }
+
+/* Text */
+
+p { margin: 0 0 1.1rem; text-wrap: pretty; }
+
+/* Lists: publications and projects */
+
+.list { list-style: none; padding: 0; margin: 0; }
+.list li {
+	display: grid;
+	grid-template-columns: 3.25rem 1fr;
+	gap: 0 1rem;
+	padding: 0.9rem 0;
+	border-top: 1px solid var(--rule);
+}
+.list li:last-child { border-bottom: 1px solid var(--rule); }
+.list .year { color: var(--faint); font-size: 1rem; padding-top: 0.12rem; }
+.list .title { display: block; line-height: 1.45; text-wrap: pretty; }
+.list span.title { color: var(--ink); }
+.list .meta { display: block; color: var(--muted); font-size: 0.98rem; line-height: 1.5; margin-top: 0.3rem; }
+
+/* CV page */
+
+.actions { text-align: center; margin: -1rem 0 1.5rem; }
+.pdf {
+	display: block;
+	width: 100%;
+	height: 85vh;
+	min-height: 32rem;
+	border: 1px solid var(--rule);
+	background: var(--bg);
+}
+.pdf-fallback { text-align: center; padding: 3rem 1rem; }
+
+/* Footer */
+
+footer {
+	margin-top: 3.5rem;
+	text-align: center;
+	color: var(--faint);
+	font-size: 0.95rem;
+	font-style: italic;
+}
+
+/* Phones */
+
+@media (max-width: 480px) {
+	.page { padding-top: 2.5rem; }
+	nav { gap: 0.25rem 1.4rem; }
+	.list li { grid-template-columns: 1fr; }
+	.list .year { padding-top: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	a { transition: none; }
+}
