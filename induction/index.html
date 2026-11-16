@@ -148,8 +148,6 @@ td.empty { color: var(--muted); padding: 1rem 0; }
 .field { margin-bottom: 1rem; }
 .check { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9375rem; color: var(--ink); margin: 0 0 1rem; }
 .check input { width: 1.0625rem; height: 1.0625rem; margin: 0; accent-color: var(--accent); flex: none; }
-.presets { display: flex; flex-wrap: wrap; gap: 0.375rem; }
-.presets button { font: 500 0.8125rem/1 var(--mono); padding: 0.4375rem 0.5rem; border-radius: 4px; }
 summary { display: flex; justify-content: space-between; align-items: center; gap: 1rem; font-weight: 500; cursor: pointer; list-style: none; }
 summary::-webkit-details-marker { display: none; }
 summary::after { content: ""; flex: none; width: 0.5rem; height: 0.5rem; margin-right: 0.25rem; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: translateY(-2px) rotate(45deg); }
@@ -316,10 +314,6 @@ details[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
 
     <section class="panel-section">
       <label class="check"><input id="useGuide" type="checkbox"> Allot half of the computation by the guiding distribution</label>
-      <div class="field">
-        <span class="label" id="examplesLabel">Example periods</span>
-        <div class="presets" id="presets" role="group" aria-labelledby="examplesLabel"></div>
-      </div>
       <button id="forget" type="button">Reset the guiding distribution</button>
     </section>
 
@@ -654,7 +648,6 @@ class Engine {
   const $ = (id) => document.getElementById(id);
   const nf = new Intl.NumberFormat('en-US');
   const engine = new Engine({ useGuide: false });
-  const PRESETS = ['01', '0011', '110', '1000', '10110', '0001011', '001011010011'];
   const TAPE_CELLS = 80, PACE = 250, BLOCK = 64, LOCK_RUN = 8, FEW = 5, STEP_MORE = 20, MOST = 200;
   const SLICE = 2;   // milliseconds of search per display frame; a new bit every PACE ms
   const CONTEXTS = ['initial', 'after .', 'after +', 'after >', 'after <', 'after [', 'after ]'];
@@ -848,16 +841,6 @@ class Engine {
   route(false);
 
   /* ---------- wiring ---------- */
-  PRESETS.forEach((p) => {
-    const b = document.createElement('button');
-    b.type = 'button'; b.textContent = p; b.setAttribute('aria-label', 'Use the period ' + p);
-    b.addEventListener('click', () => {
-      $('pattern').value = p;
-      if (readPattern()) setRunning(false, 'The period is now ' + p + '. Select Begin to commence.');
-      if (!WIDE.matches) closePanel();
-    });
-    $('presets').appendChild(b);
-  });
   $('pattern').addEventListener('change', () => { readPattern(); });
   $('pattern').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('pattern').blur(); });
   $('useGuide').addEventListener('change', () => { engine.useGuide = $('useGuide').checked; });
