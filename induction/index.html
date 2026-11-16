@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#020503">
-<title>A Fast and Short Algorithm for Sequential Induction</title>
+<title>A Fast and Short Algorithm for Induction</title>
 <meta name="author" content="Sigfrido D. Ciletti">
 <meta name="description" content="An anytime approximation to Solomonoff induction by guided search over program prefixes, in which a learned guiding distribution directs computation but never enters the probabilities.">
 <style>
@@ -198,7 +198,7 @@ details[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
 
 <main class="page" id="app">
   <section class="welcome">
-    <h1 id="appTitle" tabindex="-1">A Fast and Short Algorithm for Sequential Induction</h1>
+    <h1 id="appTitle" tabindex="-1">A Fast and Short Algorithm for Induction</h1>
     <p class="subtitle">Anytime Solomonoff induction by guided search over program prefixes</p>
   </section>
 
@@ -253,7 +253,7 @@ details[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
 </main>
 
 <main class="page doc" id="info" hidden>
-  <h1 id="infoTitle" tabindex="-1">A Fast and Short Algorithm for Sequential Induction</h1>
+  <h1 id="infoTitle" tabindex="-1">A Fast and Short Algorithm for Induction</h1>
   <p class="byline"><a href="https://ciletti.xyz" rel="author">Sigfrido D. Ciletti</a></p>
   <p class="lede">This page presents an algorithm, devised by the author, for predicting a binary sequence with bounded computation. The programs of a small monotone reference machine are explored as a tree of prefixes and run by dovetailing, so that programs sharing a prefix share their computation. A prefix is rejected, together with every program extending it, as soon as its output contradicts the observed sequence, and the probability of the next symbol is the a priori weight, 2<sup>−ℓ</sup>, of the surviving programs that have already produced it, renormalized among them. A prediction is available at every moment, and it approaches Solomonoff’s prediction over the programs of the machine as computation increases.</p>
   <p>The novelty lies in separating search from belief. A learned guiding distribution may decide where computation is spent, but it never enters the probabilities, and every program not yet rejected is guaranteed at least half of the computation its a priori probability entitles it to. Learning can therefore accelerate the search, but it can slow it by at most a factor of two and cannot alter the weight of any program. To the author’s knowledge this separation has not been made before: in Solomonoff’s incremental learning systems the guiding distribution also serves as the prior, and in Schmidhuber’s speed prior the cost of computation enters the probabilities themselves.</p>
@@ -834,7 +834,7 @@ class Engine {
     $('app').hidden = info; $('info').hidden = !info;
     $('appNav').hidden = info; $('infoNav').hidden = !info;
     if (info) closePanel(false);
-    document.title = (info ? 'About: ' : '') + 'A Fast and Short Algorithm for Sequential Induction';
+    document.title = (info ? 'About: ' : '') + 'A Fast and Short Algorithm for Induction';
     if (fromLink) { window.scrollTo(0, 0); $(info ? 'infoTitle' : 'appTitle').focus({ preventScroll: true }); }
   }
   window.addEventListener('hashchange', () => route(true));
