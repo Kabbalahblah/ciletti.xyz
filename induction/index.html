@@ -211,6 +211,7 @@ details[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
       <button class="primary" id="start" type="button">Begin</button>
       <button id="step" type="button">Reveal one symbol</button>
       <button id="restart" type="button">Reset</button>
+      <button id="auto" type="button" aria-pressed="false" title="Train the guiding distribution on every distinct repeating pattern in turn">Auto</button>
     </div>
   </div>
   <p class="error" id="patternError" role="alert"></p>
@@ -280,6 +281,13 @@ details[open] > summary::after { transform: translateY(2px) rotate(-135deg); }
   <h2>The guiding distribution</h2>
   <p>When the guiding distribution is in use, the computation is divided equally. One half is allotted in proportion to the a priori probabilities, which bounds the time required by a small constant factor relative to Levin’s universal search. The other half is allotted according to the guiding distribution, a table of conditional instruction probabilities estimated from programs that predicted at least three successive symbols correctly. The guiding distribution determines only the order of search; it has no effect upon the probabilities assigned.</p>
   <p>The guiding distribution is not used by default. Within a single trial its effect is negligible; it is of value only across trials, for longer periods, when computation is scarce, as on a slow device. It continues to be estimated while not in use.</p>
+
+  <h2>Automatic training</h2>
+  <p>The Auto control trains the guiding distribution without supervision. It presents, one after another, every distinct repeating pattern in order of length, and observes each until the system converges, or for at most four periods and sixteen symbols. Every symbol receives a fixed 100,000 machine steps, and the trials proceed as quickly as the device allows. Pressing the control again, or any other control, ends the training; the guiding distribution retains all that it has learned.</p>
+  <p>Whenever a program predicts three successive symbols correctly, its instructions are added to the guiding distribution’s estimates of which instruction tends to follow which. Over many patterns the distribution comes to favour the constructions that successful programs share, such as a loop that writes a short block and returns to its beginning. Automatic training is therefore the accumulation of experience on easy problems, so that harder problems of the same kind are searched in a more favourable order.</p>
+  <p>Each pattern is presented once. A period that merely repeats a shorter one, such as 0000, defines the same sequence as 0 and is omitted. Of the rotations of a period, such as 011, 101 and 110, which describe the same pattern read from different starting points, only the first in lexicographic order is used. The periods that remain are the Lyndon words: 0, 1, 01, 001, 011, 0001, 0011, 0111, and so on. Their number grows rapidly with length: there are 30 of length 8 and 335 of length 12.</p>
+  <p>In a test, the guiding distribution was trained on all 71 periods of length at most 8, then applied to 20 periods of length 9 and 10 that it had not seen. With 3,000 machine steps per symbol the system converged on 2 of the 20 without guidance and on all 20 with it; with 20,000 steps per symbol, on 15 and on all 20.</p>
+  <p>Automatic training alters only the order of search. The probabilities assigned are unaffected, and at least half of the computation continues to follow the a priori distribution. Its benefit depends on how closely later patterns resemble those used in training, and it is greatest when computation is scarce. To use what has been learned, select the guiding distribution under Parameters. Trials conducted automatically are not entered in the record of trials.</p>
 
   <h2>Guarantees</h2>
   <p>Two properties follow from the construction. First, the probabilities depend only on the a priori distribution and on which programs have been examined; the guiding distribution affects only the latter. Second, because every program not yet rejected receives at least half of its a priori share of computation, the time required to reach any program exceeds that of the unguided search by at most a factor of two. As computation increases without bound every program of the machine is eventually examined, and the prediction tends to Solomonoff’s normalized prediction over the programs of at most 32 instructions.</p>
@@ -650,12 +658,13 @@ class Engine {
   const engine = new Engine({ useGuide: false });
   const TAPE_CELLS = 80, PACE = 250, BLOCK = 64, LOCK_RUN = 8, FEW = 5, STEP_MORE = 20, MOST = 200;
   const SLICE = 2;   // milliseconds of search per display frame; a new bit every PACE ms
+  const AUTO_STEPS = 100000, AUTO_SLICE = 12;   // automatic training: fixed steps per symbol, and a larger share of each frame
   const CONTEXTS = ['initial', 'after .', 'after +', 'after >', 'after <', 'after [', 'after ]'];
   const WIDE = window.matchMedia('(min-width: 72rem)');
 
   let pattern = '0011';
   let running = false, stepOnce = false, lastReveal = 0, lastLive = 0, stepsAtReveal = 0, shown = FEW, tableSig = '';
-  let run = freshRun();
+  let run = freshRun(), auto = null;
   const history = [];
 
   function freshRun() { return { pattern, wrong: 0, loss: 0, streak: 0, streakStart: 0, streakSteps: 0, lockBit: null, lockSteps: null, best: '', guide: undefined }; }
@@ -750,7 +759,7 @@ class Engine {
     $('start').textContent = on ? 'Pause' : engine.n > 0 ? 'Resume' : 'Begin';
     if (why !== undefined) $('status').textContent = why;
   }
-  function reveal(now) {
+  function reveal(now, quiet) {
     const i = engine.n;
     const bit = pattern.charCodeAt(i % pattern.length) - 48;
     const pred = engine.observe(bit);
@@ -768,6 +777,7 @@ class Engine {
     } else { run.streak = 0; run.lockBit = null; run.lockSteps = null; }
     addCell(i, bit, p, had, steps);
     lastReveal = now;
+    if (quiet) return;
     engine.tick(4000);   // start on the next bit straight away, so the bet shown is current
     renderGuide(); renderAll(); lastLive = now;
     if (stepOnce) { stepOnce = false; setRunning(false, 'Symbol ' + engine.n + ' has been revealed.'); }
@@ -775,7 +785,14 @@ class Engine {
     else $('status').textContent = RUNNING_TEXT;
   }
   function frame(now) {
-    if (running) {
+    if (auto) {
+      const t0 = performance.now();
+      while (auto && performance.now() - t0 < AUTO_SLICE) {
+        if (auto.spent >= AUTO_STEPS) autoReveal(now);
+        else auto.spent += engine.tick(Math.min(4000, AUTO_STEPS - auto.spent)) || 1;
+      }
+      if (auto && now - lastLive > 200) { lastLive = now; renderAll(); }
+    } else if (running) {
       if (now - lastReveal >= PACE) reveal(now);
       const t0 = performance.now();
       while (running && performance.now() - t0 < SLICE) engine.tick(1000);
@@ -784,9 +801,60 @@ class Engine {
     requestAnimationFrame(frame);
   }
 
+  /* ---------- automatic training: every distinct repeating pattern, shortest first ---------- */
+  // A period is used only if it is a Lyndon word: strictly smaller than each of its rotations. That skips
+  // periods which repeat a shorter one (0000 repeats 0) and keeps one of each family of rotations (011, 101, 110).
+  function isLyndon(s) {
+    for (let k = 1; k < s.length; k++) if (s.slice(k) + s.slice(0, k) <= s) return false;
+    return true;
+  }
+  function* lyndonWords() {
+    for (let len = 1; len <= 32; len++)
+      for (let x = 0; x < 2 ** len; x++) {
+        const s = x.toString(2).padStart(len, '0');
+        if (isLyndon(s)) yield s;
+      }
+  }
+  function autoText() {
+    return 'Automatic training on the period ' + pattern + '. ' + nf.format(auto.done) +
+      (auto.done === 1 ? ' period' : ' periods') + ' examined so far, of which ' + nf.format(auto.converged) + ' converged.';
+  }
+  function nextWord() {
+    pattern = auto.words.next().value;
+    $('pattern').value = pattern;
+    engine.reset(); run = freshRun(); run.auto = true; stepsAtReveal = 0;
+    auto.cap = 4 * pattern.length + 16; auto.spent = 0;   // four periods and sixteen symbols, at most
+    clearTape(); renderGuide(); renderAll();
+    $('status').textContent = autoText();
+  }
+  function autoReveal(now) {
+    reveal(now, true);
+    auto.spent = 0;
+    const converged = run.lockBit !== null;
+    if (converged || engine.n >= auto.cap) {
+      auto.done++;
+      if (converged) auto.converged++;
+      nextWord();
+    }
+  }
+  function startAuto() {
+    setRunning(false); fileRun();
+    auto = { words: lyndonWords(), done: 0, converged: 0, spent: 0, cap: 0 };
+    $('auto').textContent = 'Stop'; $('auto').setAttribute('aria-pressed', 'true'); $('pattern').readOnly = true;
+    nextWord();
+  }
+  function stopAuto() {
+    if (!auto) return;
+    const message = 'Automatic training stopped after ' + nf.format(auto.done) + (auto.done === 1 ? ' period' : ' periods') +
+      ', of which ' + nf.format(auto.converged) + ' converged. The guiding distribution retains its estimates.';
+    auto = null;
+    $('auto').textContent = 'Auto'; $('auto').setAttribute('aria-pressed', 'false'); $('pattern').readOnly = false;
+    setRunning(false, message); renderAll(); renderGuide();
+  }
+
   /* ---------- runs ---------- */
   function fileRun() {
-    if (engine.n === 0) return;
+    if (engine.n === 0 || run.auto) return;
     history.unshift({ pattern: run.pattern, guide: run.guide, bits: engine.n, wrong: run.wrong, loss: run.loss, lockBit: run.lockBit, lockSteps: run.lockSteps, best: run.best });
     if (history.length > 20) history.pop();
     renderHistory();
@@ -845,12 +913,14 @@ class Engine {
   $('pattern').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('pattern').blur(); });
   $('useGuide').addEventListener('change', () => { engine.useGuide = $('useGuide').checked; });
   $('start').addEventListener('click', () => {
+    stopAuto();
     if (running) { setRunning(false, 'Suspended at symbol ' + engine.n + '.'); return; }
     if (!readPattern()) return;
     stepOnce = false; lastReveal = performance.now(); setRunning(true, RUNNING_TEXT);
   });
-  $('step').addEventListener('click', () => { if (!readPattern() || running) return; stepOnce = true; lastReveal = performance.now(); setRunning(true, 'The search proceeds for 250 milliseconds, after which one symbol is revealed.'); });
-  $('restart').addEventListener('click', () => { if (readPattern()) restart('The trial has been reset. The guiding distribution retains its estimates.'); });
+  $('step').addEventListener('click', () => { stopAuto(); if (!readPattern() || running) return; stepOnce = true; lastReveal = performance.now(); setRunning(true, 'The search proceeds for 250 milliseconds, after which one symbol is revealed.'); });
+  $('restart').addEventListener('click', () => { stopAuto(); if (readPattern()) restart('The trial has been reset. The guiding distribution retains its estimates.'); });
+  $('auto').addEventListener('click', () => { if (auto) stopAuto(); else startAuto(); });
   $('showMore').addEventListener('click', () => { shown = Math.min(MOST, shown + STEP_MORE); renderPrograms(); });
   $('showFewer').addEventListener('click', () => { shown = FEW; renderPrograms(); $('leadersTitle').scrollIntoView({ block: 'nearest' }); });
   $('forget').addEventListener('click', () => { engine.resetGuide(); renderGuide(); renderPrograms(); $('status').textContent = 'The guiding distribution has been reset to the a priori distribution.'; });
